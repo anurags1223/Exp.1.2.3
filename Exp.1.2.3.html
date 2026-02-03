@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SVG Drawing Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2vmin;
+        }
+
+        .container {
+            background: white;
+            border-radius: 1.5vmin;
+            box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, 0.2);
+            padding: 2vmin;
+            max-width: 95vw;
+            width: 120vmin;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2vmin;
+            font-size: 3vmin;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5vmin;
+            margin-bottom: 2vmin;
+            padding: 1.5vmin;
+            background: #f5f5f5;
+            border-radius: 1vmin;
+            align-items: center;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 1vmin;
+            align-items: center;
+        }
+
+        .tool-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 1.8vmin;
+        }
+
+        button {
+            padding: 1vmin 2vmin;
+            border: none;
+            border-radius: 0.8vmin;
+            cursor: pointer;
+            font-size: 1.8vmin;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: #667eea;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-0.3vmin);
+            box-shadow: 0 0.5vmin 1.5vmin rgba(102, 126, 234, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.active {
+            background: #764ba2;
+            box-shadow: 0 0 0 0.3vmin #764ba2;
+        }
+
+        .shape-btn {
+            padding: 1vmin 1.5vmin;
+            min-width: 10vmin;
+        }
+
+        .color-input {
+            width: 6vmin;
+            height: 4vmin;
+            border: 0.3vmin solid #ddd;
+            border-radius: 0.5vmin;
+            cursor: pointer;
+        }
+
+        .stroke-width {
+            width: 10vmin;
+            padding: 0.5vmin;
+            border: 0.2vmin solid #ddd;
+            border-radius: 0.5vmin;
+            font-size: 1.8vmin;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            background: white;
+            border: 0.3vmin solid #ddd;
+            border-radius: 1vmin;
+            overflow: hidden;
+        }
+
+        #svg-canvas {
+            display: block;
+            width: 100%;
+            height: 70vmin;
+            cursor: crosshair;
+        }
+
+        .info {
+            margin-top: 1.5vmin;
+            padding: 1.5vmin;
+            background: #f0f7ff;
+            border-radius: 1vmin;
+            border-left: 0.5vmin solid #667eea;
+        }
+
+        .info p {
+            margin: 0.5vmin 0;
+            color: #555;
+            font-size: 1.6vmin;
+        }
+
+        .clear-btn {
+            background: #e74c3c;
+        }
+
+        .clear-btn:hover {
+            background: #c0392b;
+            box-shadow: 0 0.5vmin 1.5vmin rgba(231, 76, 60, 0.3);
+        }
+
+        .undo-btn {
+            background: #f39c12;
+        }
+
+        .undo-btn:hover {
+            background: #d68910;
+            box-shadow: 0 0.5vmin 1.5vmin rgba(243, 156, 18, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .toolbar {
+                justify-content: center;
+            }
+
+            .tool-group {
+                flex-basis: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Interactive SVG Drawing Tool</h1>
+        
+        <div class="toolbar">
+            <div class="tool-group">
+                <label>Shape:</label>
+                <button class="shape-btn active" data-shape="freehand">✏️ Freehand</button>
+                <button class="shape-btn" data-shape="line">📏 Line</button>
+                <button class="shape-btn" data-shape="rectangle">⬛ Rectangle</button>
+                <button class="shape-btn" data-shape="circle">⭕ Circle</button>
+                <button class="shape-btn" data-shape="ellipse">🥚 Ellipse</button>
+            </div>
+
+            <div class="tool-group">
+                <label>Color:</label>
+                <input type="color" id="stroke-color" class="color-input" value="#667eea">
+            </div>
+
+            <div class="tool-group">
+                <label>Fill:</label>
+                <input type="color" id="fill-color" class="color-input" value="#ffffff">
+                <label><input type="checkbox" id="fill-enabled"> Enable</label>
+            </div>
+
+            <div class="tool-group">
+                <label>Width:</label>
+                <input type="number" id="stroke-width" class="stroke-width" value="3" min="1" max="20">
+            </div>
+
+            <div class="tool-group">
+                <button class="undo-btn" id="undo-btn">↶ Undo</button>
+                <button class="clear-btn" id="clear-btn">🗑️ Clear All</button>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <svg id="svg-canvas" xmlns="http://www.w3.org/2000/svg">
+                <!-- Drawing will be rendered here -->
+            </svg>
+        </div>
+
+        <div class="info">
+            <p><strong>Instructions:</strong></p>
+            <p>• Select a shape from the toolbar</p>
+            <p>• Click and drag on the canvas to draw</p>
+            <p>• Use color pickers to change stroke and fill colors</p>
+            <p>• Adjust stroke width with the number input</p>
+            <p>• Use Undo to remove the last shape or Clear All to reset</p>
+        </div>
+    </div>
+
+    <script>
+        class SVGDrawingTool {
+            constructor() {
+                this.canvas = document.getElementById('svg-canvas');
+                this.currentShape = 'freehand';
+                this.isDrawing = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.currentElement = null;
+                this.elements = [];
+                this.freehandPoints = [];
+
+                this.strokeColor = '#667eea';
+                this.fillColor = '#ffffff';
+                this.fillEnabled = false;
+                this.strokeWidth = 3;
+
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupToolbar();
+            }
+
+            setupEventListeners() {
+                // Mouse events
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+
+                // Touch events for mobile
+                this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+                this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+                this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+            }
+
+            setupToolbar() {
+                // Shape buttons
+                document.querySelectorAll('.shape-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.currentShape = btn.dataset.shape;
+                    });
+                });
+
+                // Color inputs
+                document.getElementById('stroke-color').addEventListener('change', (e) => {
+                    this.strokeColor = e.target.value;
+                });
+
+                document.getElementById('fill-color').addEventListener('change', (e) => {
+                    this.fillColor = e.target.value;
+                });
+
+                document.getElementById('fill-enabled').addEventListener('change', (e) => {
+                    this.fillEnabled = e.target.checked;
+                });
+
+                document.getElementById('stroke-width').addEventListener('change', (e) => {
+                    this.strokeWidth = e.target.value;
+                });
+
+                // Undo and Clear buttons
+                document.getElementById('undo-btn').addEventListener('click', () => this.undo());
+                document.getElementById('clear-btn').addEventListener('click', () => this.clearAll());
+            }
+
+            getMousePosition(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            getTouchPosition(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                return {
+                    x: touch.clientX - rect.left,
+                    y: touch.clientY - rect.top
+                };
+            }
+
+            handleMouseDown(e) {
+                this.isDrawing = true;
+                const pos = this.getMousePosition(e);
+                this.startX = pos.x;
+                this.startY = pos.y;
+
+                if (this.currentShape === 'freehand') {
+                    this.freehandPoints = [pos];
+                    this.currentElement = this.createPath();
+                } else {
+                    this.currentElement = this.createElement(this.currentShape);
+                }
+
+                this.canvas.appendChild(this.currentElement);
+            }
+
+            handleMouseMove(e) {
+                if (!this.isDrawing) return;
+
+                const pos = this.getMousePosition(e);
+
+                if (this.currentShape === 'freehand') {
+                    this.freehandPoints.push(pos);
+                    this.updatePath(this.currentElement);
+                } else {
+                    this.updateElement(this.currentElement, pos);
+                }
+            }
+
+            handleMouseUp(e) {
+                if (!this.isDrawing) return;
+                
+                this.isDrawing = false;
+                
+                if (this.currentElement) {
+                    this.elements.push(this.currentElement);
+                    this.currentElement = null;
+                }
+                
+                this.freehandPoints = [];
+            }
+
+            handleTouchStart(e) {
+                e.preventDefault();
+                this.isDrawing = true;
+                const pos = this.getTouchPosition(e);
+                this.startX = pos.x;
+                this.startY = pos.y;
+
+                if (this.currentShape === 'freehand') {
+                    this.freehandPoints = [pos];
+                    this.currentElement = this.createPath();
+                } else {
+                    this.currentElement = this.createElement(this.currentShape);
+                }
+
+                this.canvas.appendChild(this.currentElement);
+            }
+
+            handleTouchMove(e) {
+                e.preventDefault();
+                if (!this.isDrawing) return;
+
+                const pos = this.getTouchPosition(e);
+
+                if (this.currentShape === 'freehand') {
+                    this.freehandPoints.push(pos);
+                    this.updatePath(this.currentElement);
+                } else {
+                    this.updateElement(this.currentElement, pos);
+                }
+            }
+
+            handleTouchEnd(e) {
+                e.preventDefault();
+                this.handleMouseUp(e);
+            }
+
+            createElement(shape) {
+                let element;
+                const fill = this.fillEnabled ? this.fillColor : 'none';
+
+                switch (shape) {
+                    case 'line':
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        element.setAttribute('x1', this.startX);
+                        element.setAttribute('y1', this.startY);
+                        element.setAttribute('x2', this.startX);
+                        element.setAttribute('y2', this.startY);
+                        break;
+                    case 'rectangle':
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        element.setAttribute('x', this.startX);
+                        element.setAttribute('y', this.startY);
+                        element.setAttribute('width', 0);
+                        element.setAttribute('height', 0);
+                        element.setAttribute('fill', fill);
+                        break;
+                    case 'circle':
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        element.setAttribute('cx', this.startX);
+                        element.setAttribute('cy', this.startY);
+                        element.setAttribute('r', 0);
+                        element.setAttribute('fill', fill);
+                        break;
+                    case 'ellipse':
+                        element = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+                        element.setAttribute('cx', this.startX);
+                        element.setAttribute('cy', this.startY);
+                        element.setAttribute('rx', 0);
+                        element.setAttribute('ry', 0);
+                        element.setAttribute('fill', fill);
+                        break;
+                }
+
+                element.setAttribute('stroke', this.strokeColor);
+                element.setAttribute('stroke-width', this.strokeWidth);
+                element.setAttribute('stroke-linecap', 'round');
+                element.setAttribute('stroke-linejoin', 'round');
+
+                return element;
+            }
+
+            createPath() {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('stroke', this.strokeColor);
+                path.setAttribute('stroke-width', this.strokeWidth);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                return path;
+            }
+
+            updateElement(element, pos) {
+                const dx = pos.x - this.startX;
+                const dy = pos.y - this.startY;
+
+                switch (this.currentShape) {
+                    case 'line':
+                        element.setAttribute('x2', pos.x);
+                        element.setAttribute('y2', pos.y);
+                        break;
+                    case 'rectangle':
+                        const width = Math.abs(dx);
+                        const height = Math.abs(dy);
+                        const x = dx < 0 ? pos.x : this.startX;
+                        const y = dy < 0 ? pos.y : this.startY;
+                        element.setAttribute('x', x);
+                        element.setAttribute('y', y);
+                        element.setAttribute('width', width);
+                        element.setAttribute('height', height);
+                        break;
+                    case 'circle':
+                        const radius = Math.sqrt(dx * dx + dy * dy);
+                        element.setAttribute('r', radius);
+                        break;
+                    case 'ellipse':
+                        element.setAttribute('rx', Math.abs(dx));
+                        element.setAttribute('ry', Math.abs(dy));
+                        break;
+                }
+            }
+
+            updatePath(path) {
+                if (this.freehandPoints.length < 2) return;
+
+                let d = `M ${this.freehandPoints[0].x} ${this.freehandPoints[0].y}`;
+                
+                for (let i = 1; i < this.freehandPoints.length; i++) {
+                    d += ` L ${this.freehandPoints[i].x} ${this.freehandPoints[i].y}`;
+                }
+
+                path.setAttribute('d', d);
+            }
+
+            undo() {
+                if (this.elements.length > 0) {
+                    const lastElement = this.elements.pop();
+                    this.canvas.removeChild(lastElement);
+                }
+            }
+
+            clearAll() {
+                if (confirm('Are you sure you want to clear all drawings?')) {
+                    this.canvas.innerHTML = '';
+                    this.elements = [];
+                }
+            }
+        }
+
+        // Initialize the drawing tool
+        const drawingTool = new SVGDrawingTool();
+    </script>
+</body>
+</html>
